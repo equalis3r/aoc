@@ -4,10 +4,10 @@ pub fn part1(input: &str) -> usize {
 pub fn part2(input: &str) -> usize {
     parse(input)
         .windows(3)
-        .map(|x| x.iter().sum())
-        .collect::<Vec<usize>>()
+        .map(|x| [x[0], x[2]])
+        .collect::<Vec<[usize; 2]>>()
         .windows(2)
-        .filter(|y| y[0] < y[1])
+        .filter(|y| y[0][0] < y[1][1])
         .count()
 }
 
