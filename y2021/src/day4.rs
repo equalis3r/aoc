@@ -1,43 +1,35 @@
 const INPUT: &str = include_str!("./assets/day4.txt");
 
 pub fn solve() -> String {
-    let (numbers1, tables1) = parse(INPUT).unwrap();
-    let (numbers2, tables2) = parse(INPUT).unwrap();
+    let (numbers, tables) = parse(INPUT).unwrap();
+    let (answer_part1, numbers, tables) = part1(numbers, tables);
     format!(
         "  Part 1: {}\n  Part 2: {}",
-        part1(numbers1, tables1),
-        part2(numbers2, tables2)
+        answer_part1,
+        part2(numbers, tables)
     )
 }
 
-pub fn part1(numbers: Vec<i32>, mut tables: Vec<Table>) -> usize {
-    let mut picked_number = numbers.iter();
+pub fn part1(numbers: Vec<i32>, mut tables: Vec<Table>) -> (usize, Vec<i32>, Vec<Table>) {
+    let mut numbers = numbers.into_iter();
     loop {
-        let number = picked_number.next().unwrap();
-        for table in tables.iter_mut() {
-            table.check(*number);
-        }
+        let n = numbers.next().unwrap();
+        tables.iter_mut().for_each(|t| t.cross_number(n));
         if let Some(table) = tables.iter().filter(|x| x.check_bingo()).take(1).next() {
-            break *number as usize * table.get_score() as usize;
+            let answer = n as usize * table.get_score() as usize;
+            break (answer, numbers.collect::<Vec<_>>(), tables);
         };
     }
 }
 
 pub fn part2(numbers: Vec<i32>, mut tables: Vec<Table>) -> usize {
-    let mut picked_number = numbers.into_iter();
+    let mut numbers = numbers.into_iter();
     loop {
-        let number = picked_number.next().unwrap();
-        for table in tables.iter_mut() {
-            table.check(number);
-        }
-        let tables: Vec<Table> = tables
-            .iter()
-            .copied()
-            .filter(|&x| !x.check_bingo())
-            .collect();
+        let n = numbers.next().unwrap();
+        tables.iter_mut().for_each(|t| t.cross_number(n));
+        tables.retain(|&t| !t.check_bingo());
         if tables.len() == 1 {
-            let numbers: Vec<_> = picked_number.collect();
-            break part1(numbers, tables);
+            break part1(numbers.collect::<Vec<_>>(), tables).0;
         }
     }
 }
@@ -58,7 +50,7 @@ impl Table {
         }
     }
 
-    fn check(&mut self, val: i32) {
+    fn cross_number(&mut self, val: i32) {
         if let Some(pos) = self.numbers.iter().position(|&x| x == val) {
             self.numbers[pos] = -1;
             self.check += 1;
@@ -70,14 +62,10 @@ impl Table {
     }
 
     fn check_bingo(&self) -> bool {
-        if self.check < 5 {
-            false
-        } else {
-            self.bingo || self.col_bingo() || self.row_bingo()
-        }
+        self.check >= 5 && self.bingo || self.check_col_bingo() || self.check_row_bingo()
     }
 
-    fn row_bingo(&self) -> bool {
+    fn check_row_bingo(&self) -> bool {
         (0..5)
             .into_iter()
             .filter(|x| self.numbers[(x * 5)..((x + 1) * 5)].iter().sum::<i32>() == -5)
@@ -85,20 +73,10 @@ impl Table {
             >= 1
     }
 
-    fn col_bingo(&self) -> bool {
+    fn check_col_bingo(&self) -> bool {
         (0..5)
             .into_iter()
-            .filter(|&n| {
-                self.numbers
-                    .iter()
-                    .skip(n)
-                    .step_by(5)
-                    .copied()
-                    .collect::<Vec<_>>()
-                    .iter()
-                    .sum::<i32>()
-                    == -5
-            })
+            .filter(|&n| self.numbers.iter().skip(n).step_by(5).sum::<i32>() == -5)
             .count()
             >= 1
     }
@@ -117,10 +95,10 @@ fn parse(input: &str) -> anyhow::Result<(Vec<i32>, Vec<Table>)> {
         let table = string
             .by_ref()
             .take(5)
-            .collect::<Vec<&str>>()
+            .collect::<Vec<_>>()
             .join(" ")
             .split_whitespace()
-            .map(str::parse::<i32>)
+            .map(str::parse)
             .collect::<Result<Vec<_>, _>>()?;
         tables.push(Table::from(table));
     }
@@ -151,7 +129,7 @@ mod tests {
     #[test]
     fn test_part1() {
         let (numbers, tables) = parse(TEST_INPUT).unwrap();
-        assert_eq!(part1(numbers, tables), 4512);
+        assert_eq!(part1(numbers, tables).0, 4512);
     }
     #[test]
     fn test_part2() {
