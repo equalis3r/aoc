@@ -41,7 +41,7 @@ pub struct Table {
     bingo: bool,
 }
 
-impl Table {
+impl From<Vec<i32>> for Table {
     fn from(input: Vec<i32>) -> Self {
         Self {
             numbers: input.try_into().unwrap(),
@@ -49,7 +49,9 @@ impl Table {
             bingo: false,
         }
     }
+}
 
+impl Table {
     fn cross_number(&mut self, val: i32) {
         if let Some(pos) = self.numbers.iter().position(|&x| x == val) {
             self.numbers[pos] = -1;
@@ -67,7 +69,6 @@ impl Table {
 
     fn check_row_bingo(&self) -> bool {
         (0..5)
-            .into_iter()
             .filter(|x| self.numbers[(x * 5)..((x + 1) * 5)].iter().sum::<i32>() == -5)
             .count()
             >= 1
@@ -75,7 +76,6 @@ impl Table {
 
     fn check_col_bingo(&self) -> bool {
         (0..5)
-            .into_iter()
             .filter(|&n| self.numbers.iter().skip(n).step_by(5).sum::<i32>() == -5)
             .count()
             >= 1
@@ -84,23 +84,25 @@ impl Table {
 
 fn parse(input: &str) -> anyhow::Result<(Vec<i32>, Vec<Table>)> {
     let mut string = input.trim().split("\n");
-    let numbers: Vec<i32> = string
+    let numbers = string
         .next()
         .unwrap()
         .split(',')
         .map(str::parse)
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<i32>, _>>()?;
     let mut tables: Vec<Table> = Vec::new();
     while let Some(_) = string.next() {
-        let table = string
-            .by_ref()
-            .take(5)
-            .collect::<Vec<_>>()
-            .join(" ")
-            .split_whitespace()
-            .map(str::parse)
-            .collect::<Result<Vec<_>, _>>()?;
-        tables.push(Table::from(table));
+        tables.push(
+            string
+                .by_ref()
+                .take(5)
+                .collect::<Vec<_>>()
+                .join(" ")
+                .split_whitespace()
+                .map(str::parse)
+                .collect::<Result<Vec<_>, _>>()?
+                .into(),
+        )
     }
     Ok((numbers, tables))
 }
