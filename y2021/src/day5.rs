@@ -106,16 +106,16 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let parse_test_input = parse(TEST_INPUT);
+        let test_input = parse(TEST_INPUT);
         let mut grid: Grid = HashMap::new();
-        assert_eq!(part1(&parse_test_input, &mut grid), 5);
+        assert_eq!(part1(&test_input, &mut grid), 5);
     }
 
     #[test]
     fn test_part2() {
-        let parse_test_input = parse(TEST_INPUT);
+        let test_input = parse(TEST_INPUT);
         let mut grid: Grid = HashMap::new();
-        part1(&parse_test_input, &mut grid);
-        assert_eq!(part2(&parse_test_input, &mut grid), 12);
+        part1(&test_input, &mut grid);
+        assert_eq!(part2(&test_input, &mut grid), 12);
     }
 }

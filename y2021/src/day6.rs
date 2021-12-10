@@ -41,13 +41,13 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let parse_test_input = parse(TEST_INPUT);
-        assert_eq!(part_d(&parse_test_input, 80), 5934);
+        let test_input = parse(TEST_INPUT);
+        assert_eq!(part_d(&test_input, 80), 5934);
     }
 
     #[test]
     fn test_part2() {
-        let parse_test_input = parse(TEST_INPUT);
-        assert_eq!(part_d(&parse_test_input, 256), 26984457539);
+        let test_input = parse(TEST_INPUT);
+        assert_eq!(part_d(&test_input, 256), 26984457539);
     }
 }

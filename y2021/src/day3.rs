@@ -80,13 +80,13 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let parse_test_input = parse(TEST_INPUT);
-        assert_eq!(part1(&parse_test_input, 5), 198);
+        let test_input = parse(TEST_INPUT);
+        assert_eq!(part1(&test_input, 5), 198);
     }
 
     #[test]
     fn test_part2() {
-        let parse_test_input = parse(TEST_INPUT);
-        assert_eq!(part2(&parse_test_input, 5), 230);
+        let test_input = parse(TEST_INPUT);
+        assert_eq!(part2(&test_input, 5), 230);
     }
 }
