@@ -1,7 +1,7 @@
 const INPUT: &str = include_str!("./assets/day4.txt");
 
 pub fn solve() -> String {
-    let (numbers, tables) = parse(INPUT).unwrap();
+    let (numbers, tables) = parse(INPUT);
     let (answer_part1, numbers, tables) = part1(numbers, tables);
     format!(
         "  Part 1: {}\n  Part 2: {}",
@@ -82,14 +82,14 @@ impl Table {
     }
 }
 
-fn parse(input: &str) -> anyhow::Result<(Vec<i32>, Vec<Table>)> {
+fn parse(input: &str) -> (Vec<i32>, Vec<Table>) {
     let mut string = input.trim().split("\n");
     let numbers = string
         .next()
         .unwrap()
         .split(',')
-        .map(str::parse)
-        .collect::<Result<Vec<i32>, _>>()?;
+        .filter_map(|v| v.parse().ok())
+        .collect();
     let mut tables: Vec<Table> = Vec::new();
     while let Some(_) = string.next() {
         tables.push(
@@ -99,12 +99,12 @@ fn parse(input: &str) -> anyhow::Result<(Vec<i32>, Vec<Table>)> {
                 .collect::<Vec<_>>()
                 .join(" ")
                 .split_whitespace()
-                .map(str::parse)
-                .collect::<Result<Vec<_>, _>>()?
+                .filter_map(|v| v.parse().ok())
+                .collect::<Vec<_>>()
                 .into(),
         )
     }
-    Ok((numbers, tables))
+    (numbers, tables)
 }
 
 #[cfg(test)]
@@ -130,12 +130,12 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let (numbers, tables) = parse(TEST_INPUT).unwrap();
+        let (numbers, tables) = parse(TEST_INPUT);
         assert_eq!(part1(numbers, tables).0, 4512);
     }
     #[test]
     fn test_part2() {
-        let (numbers, tables) = parse(TEST_INPUT).unwrap();
+        let (numbers, tables) = parse(TEST_INPUT);
         assert_eq!(part2(numbers, tables), 1924);
     }
 }
