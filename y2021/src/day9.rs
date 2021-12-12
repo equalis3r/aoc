@@ -1,4 +1,16 @@
+use std::collections::{HashMap, HashSet};
+
 const INPUT: &str = include_str!("./assets/day9.txt");
+const MAX_HEIGHT: Height = 9;
+type Coord = (usize, usize);
+type Height = u8;
+
+#[derive(Debug)]
+pub struct Grid {
+    max_x: usize,
+    max_y: usize,
+    points: HashMap<Coord, Height>,
+}
 
 pub fn solve() -> String {
     let input = parse(INPUT);
@@ -6,90 +18,72 @@ pub fn solve() -> String {
 }
 
 pub fn part1(grid: &Grid) -> u32 {
-    grid.points
-        .iter()
-        .enumerate()
-        .map(|(i, &p)| {
-            if get_adjacent(grid, i)
-                .iter()
-                .all(|&ind| grid.points[ind] > p)
-            {
-                p as u32 + 1
-            } else {
-                0
-            }
-        })
-        .sum()
+    find_minimums(grid).fold(0, |acc, (_, v)| acc + v as u32 + 1)
 }
 
 pub fn part2(grid: &Grid) -> usize {
-    let mut unvisited = grid
-        .points
-        .iter()
-        .enumerate()
-        .filter(|(_, &p)| p != 9)
-        .map(|(i, _)| i as usize)
-        .collect::<Vec<_>>();
-    let mut count = 0;
-    let mut basin_size: Vec<usize> = Vec::new();
-    let mut stack: Vec<usize> = Vec::new();
-    while let Some(point) = unvisited.pop() {
-        stack.push(point);
-        while let Some(i) = stack.pop() {
-            count += 1;
-            unvisited.retain(|&x| x != i);
-            get_adjacent(grid, i)
-                .into_iter()
-                .filter(|&ind| grid.points[ind] != 9)
-                .for_each(|ind| {
-                    if unvisited.contains(&ind) {
-                        stack.push(ind);
-                        unvisited.retain(|&x| x != ind);
-                    }
-                });
+    // find_minimums return iterator so it will be consumed and thus
+    // there is no need for a global visited
+    let mut sizes: Vec<_> = find_minimums(grid)
+        .map(|(c, _)| c)
+        .map(|c| find_basin_size(grid, c))
+        .collect();
+    sizes.sort_unstable();
+    sizes.iter().rev().take(3).product()
+}
+
+fn find_minimums(grid: &Grid) -> impl Iterator<Item = (Coord, Height)> + '_ {
+    itertools::iproduct!(0..=grid.max_x, 0..=grid.max_y).filter_map(move |c| {
+        let v = grid.points[&c];
+        get_neighbors(grid, c).all(|(_, t)| t > v).then(|| (c, v))
+    })
+}
+
+fn find_basin_size(grid: &Grid, start: Coord) -> usize {
+    let mut to_visit = vec![start];
+    let mut visited = HashSet::new();
+
+    while let Some(c) = to_visit.pop() {
+        visited.insert(c);
+        for (nc, nv) in get_neighbors(grid, c) {
+            if nv != MAX_HEIGHT && !visited.contains(&nc) {
+                to_visit.push(nc)
+            }
         }
-        basin_size.push(count);
-        count = 0;
     }
-    basin_size.sort_by(|a, b| b.cmp(a));
-    basin_size.iter().take(3).product()
+    visited.len()
 }
 
-#[derive(Debug)]
-pub struct Grid {
-    size: [usize; 2],
-    points: Vec<u8>,
-}
+fn get_neighbors(grid: &Grid, (x, y): Coord) -> impl Iterator<Item = (Coord, Height)> {
+    let same_y = |x| grid.points.get(&(x, y)).map(|&v| ((x, y), v));
+    let same_x = |y| grid.points.get(&(x, y)).map(|&v| ((x, y), v));
 
-fn get_adjacent(grid: &Grid, i: usize) -> Vec<usize> {
-    let x = i % grid.size[0];
-    let y = i / grid.size[0];
-    let left = if x > 0 { Some(i - 1) } else { None };
-    let right = if x + 1 < grid.size[0] {
-        Some(i + 1)
-    } else {
-        None
-    };
-    let up = if y > 0 { Some(i - grid.size[0]) } else { None };
-    let down = if y + 1 < grid.size[1] {
-        Some(i + grid.size[0])
-    } else {
-        None
-    };
-    [left, right, up, down]
-        .into_iter()
-        .filter_map(|p| p)
-        .collect()
+    let l = x.checked_sub(1).and_then(same_y);
+    let r = x.checked_add(1).and_then(same_y);
+    let u = y.checked_sub(1).and_then(same_x);
+    let d = y.checked_add(1).and_then(same_x);
+
+    itertools::chain!(l, r, u, d)
 }
 
 fn parse(input: &str) -> Grid {
-    let arr = input
-        .lines()
-        .map(|l| l.chars().map(|c| c.to_digit(10).unwrap() as u8).collect())
-        .collect::<Vec<Vec<u8>>>();
+    let mut max_x = 0;
+    let mut max_y = 0;
+    let mut points: HashMap<Coord, Height> = HashMap::new();
+
+    for (y, l) in input.lines().enumerate() {
+        for (x, c) in l.chars().enumerate() {
+            let c = c.to_digit(10).unwrap() as Height;
+            points.insert((x, y), c);
+            max_x = std::cmp::max(max_x, x);
+        }
+        max_y = std::cmp::max(max_y, y);
+    }
+
     Grid {
-        size: [arr[0].len(), arr.len()],
-        points: arr.into_iter().flatten().collect(),
+        max_x,
+        max_y,
+        points,
     }
 }
 

@@ -1,75 +1,79 @@
+use std::collections::BTreeMap;
 const INPUT: &str = include_str!("./assets/day3.txt");
 
 pub fn solve() -> String {
-    let input = parse(INPUT);
-    format!(
-        "  Part 1: {}\n  Part 2: {}",
-        part1(&input, 12),
-        part2(&input, 12),
-    )
+    format!("  Part 1: {}\n  Part 2: {}", part1(INPUT), part2(INPUT),)
 }
 
-pub fn part1(input: &[usize], b: usize) -> usize {
-    let gamma = (0..b)
-        .rev()
-        .into_iter()
-        .map(|pos| most_common_bit_at_pos(input, pos).to_string())
-        .collect::<String>();
-    let gamma = usize::from_str_radix(&gamma, 2).unwrap();
-    gamma * flip_b_bits(gamma, b)
-}
+fn part1(s: &str) -> u64 {
+    let mut map = BTreeMap::<_, i32>::new();
 
-pub fn part2(input: &[usize], b: usize) -> usize {
-    oxygen_rating(input, b) * co2_rating(input, b)
-}
-
-fn oxygen_rating(input: &[usize], mut b: usize) -> usize {
-    let mut temp = input.clone().to_vec();
-    while temp.len() > 1 {
-        b -= 1;
-        temp = temp
-            .iter()
-            .copied()
-            .filter(|&x| find_bit_at_pos(x, b) == most_common_bit_at_pos(&temp, b))
-            .collect::<Vec<_>>();
+    for l in clean_lines(s) {
+        for (p, c) in l.chars().enumerate() {
+            let delta = if c == '1' { 1 } else { -1 };
+            *map.entry(p).or_default() += delta;
+        }
     }
-    temp[0]
-}
 
-fn co2_rating(input: &[usize], mut b: usize) -> usize {
-    let mut temp = input.clone().to_vec();
-    while temp.len() > 1 {
-        b -= 1;
-        temp = temp
-            .iter()
-            .copied()
-            .filter(|&x| find_bit_at_pos(x, b) == (1 - most_common_bit_at_pos(&temp, b)))
-            .collect::<Vec<_>>();
+    let mut gamma = 0u64;
+    let mut mask = 0;
+
+    for (_p, c) in map {
+        assert_ne!(c, 0, "No majority");
+
+        gamma <<= 1;
+
+        if c > 0 {
+            gamma |= 1;
+        }
+
+        mask <<= 1;
+        mask |= 1;
     }
-    temp[0]
+
+    let omega = !gamma & mask;
+    omega * gamma
 }
 
-fn most_common_bit_at_pos(input: &[usize], pos: usize) -> usize {
-    let bit_1s = input
-        .into_iter()
-        .fold(0, |acc, &x| acc + find_bit_at_pos(x, pos));
-    (bit_1s >= input.len() - bit_1s) as usize
+fn part2(s: &str) -> u64 {
+    fn delve<'a>(lines: &[&'a str], prefer_one: bool, depth: usize) -> &'a str {
+        // Exit if we only have one string
+        if let Some((one, rest)) = lines.split_first() {
+            if rest.is_empty() {
+                return one;
+            }
+        }
+
+        let (bit_0, bit_1): (Vec<_>, Vec<_>) = lines
+            .iter()
+            .partition(|l| l.chars().nth(depth) == Some('0'));
+
+        use std::cmp::Ordering::*;
+        let selected = match (bit_0.len().cmp(&bit_1.len()), prefer_one) {
+            (Less, true) => bit_1,
+            (Equal, true) => bit_1,
+            (Greater, true) => bit_0,
+
+            (Less, false) => bit_0,
+            (Equal, false) => bit_0,
+            (Greater, false) => bit_1,
+        };
+
+        delve(&selected, prefer_one, depth + 1)
+    }
+
+    let lines: Vec<_> = clean_lines(s).collect();
+    let oxygen = delve(&lines, true, 0);
+    let co2 = delve(&lines, false, 0);
+
+    let oxygen = u64::from_str_radix(oxygen, 2).expect("Not binary");
+    let co2 = u64::from_str_radix(co2, 2).expect("Not binary");
+
+    oxygen * co2
 }
 
-fn find_bit_at_pos(n: usize, pos: usize) -> usize {
-    n >> pos & 1
-}
-
-fn flip_b_bits(n: usize, b: usize) -> usize {
-    (n) ^ ((1usize << (b)) - 1)
-}
-
-fn parse(input: &str) -> Vec<usize> {
-    input
-        .lines()
-        .map(|x| usize::from_str_radix(x, 2))
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap()
+fn clean_lines(s: &str) -> impl Iterator<Item = &str> {
+    s.lines().map(str::trim).filter(|s| !s.is_empty())
 }
 
 #[cfg(test)]
@@ -80,13 +84,11 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let test_input = parse(TEST_INPUT);
-        assert_eq!(part1(&test_input, 5), 198);
+        assert_eq!(part1(TEST_INPUT), 198);
     }
 
     #[test]
     fn test_part2() {
-        let test_input = parse(TEST_INPUT);
-        assert_eq!(part2(&test_input, 5), 230);
+        assert_eq!(part2(TEST_INPUT), 230);
     }
 }
