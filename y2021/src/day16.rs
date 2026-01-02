@@ -1,4 +1,4 @@
-const INPUT: &str = include_str!("./assets/day9.txt");
+const INPUT: &str = include_str!("./assets/day16.txt");
 
 pub fn solve() -> String {
     let input = parse(INPUT);

@@ -1,63 +1,75 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::BTreeMap;
 
 const INPUT: &str = include_str!("./assets/day12.txt");
-type Small = bool;
-type Graph<'a> = HashMap<&'a str, Vec<(&'a str, Small)>>;
 
 pub fn solve() -> String {
-    let input = parse(INPUT);
-    let (no_small_paths, small_paths) = bfs(&input);
     format!(
         "  Part 1: {}\n  Part 2: {}",
-        no_small_paths,
-        no_small_paths + small_paths
+        bfs(INPUT, false),
+        bfs(INPUT, true)
     )
 }
 
-pub fn bfs(graph: &Graph) -> (u32, u32) {
-    let mut small_paths: u32 = 0;
-    let mut no_small_paths: u32 = 0;
-    let mut to_visit = Vec::from([(("end", true), HashSet::new(), true)]);
-    while let Some(((node, small), mut visited, mut twice)) = to_visit.pop() {
-        if node == "start" {
-            if twice {
-                no_small_paths += 1;
-            } else {
-                small_paths += 1;
-            }
-        } else {
-            if small {
-                twice = twice && !visited.contains(node);
-                visited.insert(node);
-            }
-            for (neighbor, neighbor_small) in &graph[&node] {
-                if twice || !visited.contains(neighbor) {
-                    to_visit.push(((neighbor, *neighbor_small), visited.clone(), twice));
-                }
-            }
-        }
-    }
-    (no_small_paths, small_paths)
-}
+pub fn bfs(s: &str, twice: bool) -> usize {
+    let mut uc = vec![];
+    let mut id: BTreeMap<&str, u8> = BTreeMap::from([("start", 1), ("end", 0)]);
+    let mut map: BTreeMap<u8, Vec<u8>> = BTreeMap::new();
 
-fn parse(input: &str) -> Graph<'_> {
-    let mut graph = Graph::new();
-    for line in input.lines() {
-        let (n1, n2) = line.split_once('-').unwrap();
-        if n1.ne("start") && n2.ne("end") {
-            graph
-                .entry(n1)
-                .or_default()
-                .push((n2, n2.to_lowercase() == n2));
-        }
-        if n2.ne("start") && n1.ne("end") {
-            graph
-                .entry(n2)
-                .or_default()
-                .push((n1, n1.to_lowercase() == n1));
-        }
+    s.lines().for_each(|l| {
+        let mut idx = |a| {
+            let idx = id.len() as u8;
+            *id.entry(a).or_insert_with(|| {
+                (a.as_bytes()[0] <= b'Z').then(|| uc.push(idx));
+                idx
+            })
+        };
+        let mut branch = |a, b| {
+            let entry = map.entry(a).or_insert_with(|| Vec::with_capacity(6));
+            (b != 0).then(|| entry.push(b));
+        };
+        let (a, b) = l.split_once('-').unwrap();
+        let (a, b) = (idx(a), idx(b));
+        branch(a, b);
+        branch(b, a);
+    });
+
+    let map = map
+        .keys()
+        .filter(|b| !uc.contains(b))
+        .map(|&b| {
+            (
+                b,
+                map[&b].iter().fold([0; 13], |mut chld, b| {
+                    if uc.contains(b) {
+                        map[b].iter().for_each(|b| chld[*b as usize] += 1);
+                    } else {
+                        chld[*b as usize] += 1;
+                    }
+                    chld
+                }),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let mut todo: Vec<(u8, u8, bool, usize)> = vec![(0, 1, twice, 1)];
+    let (mut to, mut count) = ([1; 13], 0);
+    while let Some((a, b, t, s)) = todo.pop() {
+        to[b as usize] = a;
+        count += map[&a]
+            .iter()
+            .enumerate()
+            .filter(|&(_, routes)| *routes > 0)
+            .fold(0, |acc, (c, _)| match c {
+                1 => acc + s * map[&a][c],
+                v => {
+                    let visit = v != 0 && to[2..=b as usize].contains(&(v as u8));
+                    (t || !visit).then(|| todo.push((v as u8, b + 1, t && !visit, s * map[&a][v])));
+                    acc
+                }
+            });
     }
-    graph
+
+    count
 }
 
 #[cfg(test)]
@@ -84,15 +96,11 @@ start-RW";
 
     #[test]
     fn test_part1() {
-        let test_input = parse(TEST_INPUT);
-        let (no_small_paths, _) = bfs(&test_input);
-        assert_eq!(no_small_paths, 226);
+        assert_eq!(bfs(TEST_INPUT, false), 226);
     }
 
     #[test]
     fn test_part2() {
-        let test_input = parse(TEST_INPUT);
-        let (no_small_paths, small_paths) = bfs(&test_input);
-        assert_eq!(no_small_paths + small_paths, 3509);
+        assert_eq!(bfs(TEST_INPUT, true), 3509);
     }
 }

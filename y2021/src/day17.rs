@@ -1,4 +1,4 @@
-const INPUT: &str = include_str!("./assets/day9.txt");
+const INPUT: &str = include_str!("./assets/day17.txt");
 
 pub fn solve() -> String {
     let input = parse(INPUT);
@@ -19,7 +19,7 @@ fn parse(input: &str) -> Vec<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    const TEST_INPUT: &str = "";
+    const TEST_INPUT: &str = "target area: x=20..30, y=-10..-5";
 
     #[test]
     fn test_part1() {

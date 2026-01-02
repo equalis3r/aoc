@@ -15,6 +15,9 @@ fn main() {
         day10::solve,
         day11::solve,
         day12::solve,
+        day13::solve,
+        day14::solve,
+        day15::solve,
     ];
 
     let start = Instant::now();

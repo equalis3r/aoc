@@ -1,90 +1,64 @@
-use std::collections::{HashMap, HashSet};
-
-const INPUT: &str = include_str!("./assets/day9.txt");
-const MAX_HEIGHT: Height = 9;
-type Coord = (usize, usize);
 type Height = u8;
+const INPUT: &str = include_str!("./assets/day9.txt");
+const NEIGHBORS: [(isize, isize); 4] = [(0, -1), (0, 1), (-1, 0), (1, 0)];
+const MAX_HEIGHT: Height = b'9';
 
-#[derive(Debug)]
-pub struct Grid {
-    max_x: usize,
-    max_y: usize,
-    points: HashMap<Coord, Height>,
-}
+type Grid = Vec<Vec<Height>>;
 
 pub fn solve() -> String {
-    let input = parse(INPUT);
-    format!("  Part 1: {}\n  Part 2: {}", part1(&input), part2(&input))
+    let mut grid = parse(INPUT);
+    format!("  Part 1: {}\n  Part 2: {}", part1(&grid), part2(&mut grid))
 }
 
-pub fn part1(grid: &Grid) -> u32 {
-    find_minimums(grid).fold(0, |acc, (_, v)| acc + v as u32 + 1)
-}
-
-pub fn part2(grid: &Grid) -> usize {
-    // find_minimums return iterator so it will be consumed and thus
-    // there is no need for a global visited
-    let mut sizes: Vec<_> = find_minimums(grid)
-        .map(|(c, _)| c)
-        .map(|c| find_basin_size(grid, c))
-        .collect();
-    sizes.sort_unstable();
-    sizes.iter().rev().take(3).product()
-}
-
-fn find_minimums(grid: &Grid) -> impl Iterator<Item = (Coord, Height)> + '_ {
-    itertools::iproduct!(0..=grid.max_x, 0..=grid.max_y).filter_map(move |c| {
-        let v = grid.points[&c];
-        get_neighbors(grid, c).all(|(_, t)| t > v).then(|| (c, v))
-    })
-}
-
-fn find_basin_size(grid: &Grid, start: Coord) -> usize {
-    let mut to_visit = vec![start];
-    let mut visited = HashSet::new();
-
-    while let Some(c) = to_visit.pop() {
-        visited.insert(c);
-        for (nc, nv) in get_neighbors(grid, c) {
-            if nv != MAX_HEIGHT && !visited.contains(&nc) {
-                to_visit.push(nc)
+pub fn part1(grid: &Grid) -> usize {
+    let mut sum = 0;
+    for (y, line) in grid.iter().enumerate() {
+        for (x, cell) in line.iter().enumerate() {
+            if NEIGHBORS.iter().all(|&(xx, yy)| {
+                grid.get((y as isize + yy) as usize)
+                    .and_then(|l| l.get((x as isize + xx) as usize))
+                    .map(|n| cell < n)
+                    .unwrap_or(true)
+            }) {
+                sum += (cell - b'0') as usize + 1;
             }
         }
     }
-    visited.len()
+    sum
 }
 
-fn get_neighbors(grid: &Grid, (x, y): Coord) -> impl Iterator<Item = (Coord, Height)> {
-    let same_y = |x| grid.points.get(&(x, y)).map(|&v| ((x, y), v));
-    let same_x = |y| grid.points.get(&(x, y)).map(|&v| ((x, y), v));
+pub fn part2(grid: &mut Grid) -> usize {
+    let mut basins = vec![];
+    for y in 0..grid.len() {
+        for x in 0..grid[0].len() {
+            (grid[y][x] < MAX_HEIGHT).then(|| basins.push(find_basin_size(grid, x, y)));
+        }
+    }
 
-    let l = x.checked_sub(1).and_then(same_y);
-    let r = x.checked_add(1).and_then(same_y);
-    let u = y.checked_sub(1).and_then(same_x);
-    let d = y.checked_add(1).and_then(same_x);
+    basins.sort_unstable();
+    basins.iter().rev().take(3).product::<usize>()
+}
 
-    itertools::chain!(l, r, u, d)
+fn find_basin_size(grid: &mut Grid, x: usize, y: usize) -> usize {
+    grid[y][x] = b'9';
+    NEIGHBORS
+        .iter()
+        .map(|(xx, yy)| ((x as isize + xx) as usize, (y as isize + yy) as usize))
+        .fold(1, |acc, (x, y)| {
+            match grid.get(y).and_then(|l| l.get(x)).map(|&n| n < b'9') {
+                Some(true) => acc + find_basin_size(grid, x, y),
+                _ => acc,
+            }
+        })
 }
 
 fn parse(input: &str) -> Grid {
-    let mut max_x = 0;
-    let mut max_y = 0;
-    let mut points: HashMap<Coord, Height> = HashMap::new();
-
-    for (y, l) in input.lines().enumerate() {
-        for (x, c) in l.chars().enumerate() {
-            let c = c.to_digit(10).unwrap() as Height;
-            points.insert((x, y), c);
-            max_x = std::cmp::max(max_x, x);
-        }
-        max_y = std::cmp::max(max_y, y);
-    }
-
-    Grid {
-        max_x,
-        max_y,
-        points,
-    }
+    input
+        .trim()
+        .as_bytes()
+        .split(|&b| b == b'\n')
+        .map(|l| l.to_vec())
+        .collect::<Vec<_>>()
 }
 
 #[cfg(test)]
@@ -98,13 +72,13 @@ mod tests {
 
     #[test]
     fn test_part1() {
-        let test_input = parse(TEST_INPUT);
-        assert_eq!(part1(&test_input), 15);
+        let grid = parse(TEST_INPUT);
+        assert_eq!(part1(&grid), 15);
     }
 
     #[test]
     fn test_part2() {
-        let test_input = parse(TEST_INPUT);
-        assert_eq!(part2(&test_input), 1134);
+        let mut grid = parse(TEST_INPUT);
+        assert_eq!(part2(&mut grid), 1134);
     }
 }
